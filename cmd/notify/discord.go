@@ -62,7 +62,7 @@ func sizeToString(size *nkmonitor.SizeInfo) string {
 		symbol = checkMark
 	}
 
-	return fmt.Sprintf("%s %s %s", size.Description, size.Sku, symbol)
+	return fmt.Sprintf("%s - %s - %s", size.Description, size.Sku, symbol)
 }
 
 func (d *DiscordNotifyer) Notify(info nkmonitor.RestockInfo) error {
@@ -89,10 +89,10 @@ func (d *DiscordNotifyer) Notify(info nkmonitor.RestockInfo) error {
 		AddField("Price", info.Price, true).
 		AddField("Code", info.Code, true)
 	if len(availableSizes) > 0 {
-		webHook.AddField("Available sizes (can be added to cart)", strings.Join(availableSizes, "\n"), false)
+		webHook.AddField("Available sizes (size - SKU - restocked)", strings.Join(availableSizes, "\n"), false)
 	}
 	if len(inStockSizes) > 0 {
-		webHook.AddField("In stock sizes (can't be added to cart)", strings.Join(inStockSizes, "\n"), false)
+		webHook.AddField("In stock sizes (size - SKU - restocked)", strings.Join(inStockSizes, "\n"), false)
 	}
 
 	if _, err := d.w.CreateEmbeds([]discord.Embed{webHook.Build()}); err != nil {

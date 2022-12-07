@@ -27,9 +27,11 @@ type Monitor struct {
 	mimicSpec             *mimic.ClientSpec
 	addTaskCh             chan monitorTask
 	removeTaskCh          chan string
+	stopCh                chan chan struct{}
 	buildID               *atomic.String
 	lastBuildIdUpdateTime time.Time
 	buildIdUpdateLock     *sync.Mutex
+	startStopLock         *sync.Mutex
 	delay                 time.Duration
 	proxies               []*proxy.Proxy
 	curProxyIndex         *atomic.Uint64
@@ -131,9 +133,11 @@ func NewMonitor(userAgent string, delay time.Duration, proxies []string, mimicSp
 		mimicSpec:             mimicSpec,
 		addTaskCh:             make(chan monitorTask, 1),
 		removeTaskCh:          make(chan string),
+		stopCh:                make(chan chan struct{}),
 		buildID:               &atomic.String{},
 		lastBuildIdUpdateTime: time.Now().Add(-999 * time.Hour),
 		buildIdUpdateLock:     &sync.Mutex{},
+		startStopLock:         &sync.Mutex{},
 		delay:                 delay,
 		proxies:               parsedProxies,
 		curProxyIndex:         &atomic.Uint64{},
@@ -218,7 +222,6 @@ func (m *Monitor) monitorProduct(cancel <-chan struct{}, productPath string, not
 		lastRequestStartTime = time.Now().Add(-m.delay)
 	)
 
-	fmt.Println("started monitoring url: ", backendUrl)
 	for {
 		select {
 		case <-cancel:
@@ -372,33 +375,55 @@ func (m *Monitor) mainLoop() {
 					// Send cancellation to channel, it's buffered so no chance of locking
 					cancelChs[key] <- struct{}{}
 					// This is safe https://stackoverflow.com/questions/23229975/is-it-safe-to-remove-selected-keys-from-map-within-a-range-loop
-					// No need to delete from cancelChs since it will be overwritten if the path starts being monitored again
 					delete(taskList, key)
+					delete(cancelChs, key)
 				}
 			}
+		case pingBackCh := <-m.stopCh: // Stop all running monitors, send a ping back and stop the main loop
+			for _, ch := range cancelChs {
+				ch <- struct{}{}
+			}
+			pingBackCh <- struct{}{}
+			return
 		}
 	}
 }
 
 // Start starts the monitors, needs to be called before calling AddTask
-func (m *Monitor) Start() (err error) {
-	//Make sure we don't start twice
-	if m.started.CompareAndSwap(false, true) {
-		defer func() {
-			if err != nil {
-				m.started.Store(false)
-			}
-		}()
+func (m *Monitor) Start() error {
+	// Make sure we don't start twice
+	m.startStopLock.Lock()
+	defer m.startStopLock.Unlock()
 
-		err := m.updateBuildID()
-		if err != nil {
-			return err
-		}
-		go m.mainLoop()
-		return nil
-	} else {
-		return ErrAlreadyStarted // can also happen if it's currently being started
+	if m.started.Load() {
+		return ErrAlreadyStarted
 	}
+
+	err := m.updateBuildID()
+
+	if err != nil {
+		return err
+	}
+
+	go m.mainLoop()
+	m.started.Store(true)
+	return nil
+}
+
+// Stop stops the monitor
+func (m *Monitor) Stop() error {
+	m.startStopLock.Lock()
+	defer m.startStopLock.Unlock()
+
+	if !m.started.Load() {
+		return ErrNotStarted
+	}
+
+	defer m.started.Store(false)
+	done := make(chan struct{})
+	m.stopCh <- done
+	<-done
+	return nil
 }
 
 func (m *Monitor) updateBuildID() error {
