@@ -32,11 +32,11 @@ func main(){
     userAgent := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
 
     m, _ := mimic.Chromium(mimic.BrandChrome, "107.0.0.0")
-	monitor, _ := nkmonitor.NewMonitor(userAgent, 10 * time.Second, cfg.proxies, m)
+    monitor, _ := nkmonitor.NewMonitor(userAgent, 10 * time.Second, cfg.proxies, m)
 
-	monitor.Start()
+    monitor.Start()
 
-	restockCh := make(chan nkmonitor.RestockInfo)
+    restockCh := make(chan nkmonitor.RestockInfo)
     monitor.Add("https://www.redacted.com.br/snkrs/women's-air-jordan-5-024414.html", restockCh)
     <-restockCh
 }
