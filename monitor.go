@@ -310,21 +310,22 @@ func ParseNKUrl(productUrl string) (*url.URL, error) {
 // AddTask creates a new monitoring task for the desired url and callback channel, returns the uuid of the task
 // so it can be stopped later with RemoveTask
 func (m *Monitor) AddTask(productUrl string, callback chan RestockInfo) (string, error) {
-	if m.started.Load() {
-		//Shouldn't be a problem, but also there's no reason to do it so better to return an error
-		if callback == nil {
-			return "", ErrNilCallback
-		}
-		parsed, err := ParseNKUrl(productUrl)
-		if err != nil {
-			return "", err
-		}
-		newTask := monitorTask{path: parsed.Path, callback: callback, id: uuid.NewString()}
-		m.addTaskCh <- newTask
-		return newTask.id, nil
-	} else {
+	if !m.started.Load() {
 		return "", ErrNotStarted
 	}
+
+	//Shouldn't be a problem, but also there's no reason to do it so better to return an error
+	if callback == nil {
+		return "", ErrNilCallback
+	}
+	parsed, err := ParseNKUrl(productUrl)
+	if err != nil {
+		return "", err
+	}
+	newTask := monitorTask{path: parsed.Path, callback: callback, id: uuid.NewString()}
+	m.addTaskCh <- newTask
+	return newTask.id, nil
+
 }
 
 // RemoveTask removes a task from the task list, it's a no-op if the monitor is stopped or the task does not exist
