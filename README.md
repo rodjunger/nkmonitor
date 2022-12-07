@@ -9,7 +9,7 @@ The nkmonitor package provides a monitor for the brazillian swoosh website produ
 
 Pre-built binaries for the CLI are available in the releases section.
 
-## CLI Usage
+## CLI usage
 
 `./nkmonitor -u "product url"`
 
@@ -32,7 +32,7 @@ func main(){
     userAgent := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
 
     m, _ := mimic.Chromium(mimic.BrandChrome, "107.0.0.0")
-    monitor, _ := nkmonitor.NewMonitor(userAgent, 10 * time.Second, cfg.proxies, m)
+    monitor, _ := nkmonitor.NewMonitor(userAgent, 10 * time.Second, []string{}, m)
 
     monitor.Start()
 
