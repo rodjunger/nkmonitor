@@ -17,6 +17,8 @@ require (
 	github.com/disgoorg/log v1.2.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.15.12 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/refraction-networking/utls v1.1.6-0.20221101174805-9c1996abbbba // indirect
 	github.com/sasha-s/go-csync v0.0.0-20210812194225-61421b77c44b // indirect
@@ -33,6 +35,7 @@ require (
 	github.com/disgoorg/disgo v0.14.0
 	github.com/google/uuid v1.3.0
 	github.com/mileusna/useragent v1.2.1
+	github.com/rs/zerolog v1.28.0
 	github.com/saucesteals/fhttp v0.0.0-20221106032530-a77df0f55ed9
 	github.com/saucesteals/mimic v0.0.0-20221106032943-9dfb98edc650
 	github.com/stretchr/testify v1.8.1

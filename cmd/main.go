@@ -11,6 +11,8 @@ import (
 	"github.com/mileusna/useragent"
 	"github.com/rodjunger/nkmonitor"
 	"github.com/rodjunger/nkmonitor/cmd/notify"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/saucesteals/mimic"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +39,13 @@ var rootCmd = &cobra.Command{
 	RunE:    startMonitor,
 }
 
-func validateParams(cmd *cobra.Command, args []string) error {
+func validateParams(cmd *cobra.Command, args []string) (err error) {
+	defer func() {
+		if err != nil {
+			log.Error().Err(err).Msg("")
+		}
+	}()
+
 	ua := useragent.Parse(cfg.userAgent)
 	if ua.Name != "Chrome" || ua.Version == "" {
 		return nkmonitor.ErrInvalidUserAgent
@@ -70,7 +78,15 @@ func validateParams(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func startMonitor(cmd *cobra.Command, args []string) error {
+func startMonitor(cmd *cobra.Command, args []string) (err error) {
+	log.Info().Msg("Starting monitor.")
+
+	defer func() {
+		if err != nil {
+			log.Error().Err(err).Msg("")
+		}
+	}()
+
 	m, _ := mimic.Chromium(mimic.BrandChrome, useragent.Parse(cfg.userAgent).Version)
 	monitor, err := nkmonitor.NewMonitor(cfg.userAgent, cfg.delay, cfg.proxies, m)
 	if err != nil {
@@ -82,19 +98,24 @@ func startMonitor(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	log.Info().Msg("Monitor started successfully.")
+
 	restockCh := make(chan nkmonitor.RestockInfo)
 
 	go func() {
 		for {
 			info := <-restockCh
+			log.Info().Str("product", info.Name).Msg("Restock found.")
 			go cfg.notifyer.Notify(info)
 		}
 	}()
 
+	log.Info().Msg("Adding urls.")
 	for _, url := range cfg.urls {
 		if _, err := monitor.AddTask(url, restockCh); err != nil {
 			return err
 		}
+		log.Info().Str("url", url).Msg("Added.")
 	}
 
 	sigs := make(chan os.Signal, 1)
@@ -103,6 +124,7 @@ func startMonitor(cmd *cobra.Command, args []string) error {
 
 	<-sigs
 
+	log.Info().Msg("Stopping monitor.")
 	return nil
 }
 
@@ -116,6 +138,7 @@ func Execute() {
 }
 
 func init() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	cfg = &config{urls: make([]string, 1), proxies: make([]string, 0)}
 	rootCmd.Flags().StringSliceVarP(&cfg.urls, "urls", "u", nil, "urls that will be fed to the monitor.")
 	rootCmd.MarkFlagRequired("urls")
